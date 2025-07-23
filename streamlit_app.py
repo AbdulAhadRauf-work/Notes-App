@@ -194,7 +194,7 @@ def plot_task_matrix(tasks):
         ax.spines['bottom'].set_visible(False)
         ax.spines['left'].set_visible(False)
 
-    plt.tight_layout(rect=[0, 0, 1, 0.96])
+    plt.tight_layout(rect=[0, 0, 1, 0.96]) # type: ignore
     return fig
 
 def task_form_logic(task: Optional[Dict] = None) -> Tuple[Optional[Dict], Optional[Tuple], bool]:
