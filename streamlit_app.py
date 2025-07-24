@@ -396,6 +396,8 @@ else:
         if not active_tasks:
             st.info("You have no active tasks. Create one from the sidebar!")
         else:
+            no_of_tasks = len(active_tasks)
+            st.write(f" Currents {no_of_tasks} {'Task' if no_of_tasks !=1 else 'Tasks'}")
             for task in active_tasks:
                 with st.expander(f"**{task['title']}** | {task['urgency'].replace('_', ' ').title()} & {task['importance'].replace('_', ' ').title()}"):
                     st.write(task['description'])
