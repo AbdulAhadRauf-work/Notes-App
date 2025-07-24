@@ -84,6 +84,10 @@ def create_task(
     db: Session = Depends(get_db),
     current_user: UserDB = Depends(get_current_user)
 ):
+    query = db.query(TaskDB).filter(TaskDB.title.ilike(f"%{task.title}%")).first()
+    if query:
+        raise HTTPException(status_code=404, detail="Title already present, cannot add to database.")
+
     new_task = TaskDB(**task.dict(), user_id=current_user.id)
     db.add(new_task)
     db.commit()
