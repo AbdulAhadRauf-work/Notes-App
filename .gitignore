@@ -10,7 +10,7 @@ tasks.db
 
 # Uploads directory
 uploads/
-
+.devcontainer/
 # VS Code settings
 .vscode/
 
