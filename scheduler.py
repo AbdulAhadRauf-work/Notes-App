@@ -49,4 +49,5 @@ def send_daily_reminders():
 # Initialize the scheduler
 scheduler = BackgroundScheduler()
 # Schedule the job to run every day at 8:00 AM
-scheduler.add_job(send_daily_reminders, 'cron', hour=10, minute=30)
+scheduler.add_job(send_daily_reminders, 'cron', hour=11, minute=0)
+scheduler.add_job(send_daily_reminders, 'cron', hour=14, minute=30)
