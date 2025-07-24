@@ -219,7 +219,7 @@ def task_form_logic(task: Optional[Dict] = None) -> Tuple[Optional[Dict], Option
     default_timeframe = [e.value for e in TimeFrameEnum].index(task['time_frame']) if is_edit else 0
     default_deadline = datetime.fromisoformat(task['deadline']).date() if is_edit and task.get('deadline') else None
 
-    new_title = st.text_input("Title", value=default_title)
+    new_title = st.text_input("Title", value=default_title).strip()
     new_description = st.text_area("Description", value=default_desc)
     new_deadline = st.date_input("Deadline (Optional)", value=default_deadline)
     
@@ -313,7 +313,7 @@ if "token" not in st.session_state:
     auth_tab, register_tab = st.tabs(["Login", "Register"])
     with auth_tab:
         with st.form("login_form"):
-            username = st.text_input("Username")
+            username = st.text_input("Username").strip()
             password = st.text_input("Password", type="password")
             if st.form_submit_button("Login", type="primary"):
                 token_data = login_user(username, password)
@@ -323,8 +323,8 @@ if "token" not in st.session_state:
                     st.rerun()
     with register_tab:
         with st.form("register_form"):
-            new_username = st.text_input("New Username")
-            new_email = st.text_input("Email")
+            new_username = st.text_input("New Username").strip()
+            new_email = st.text_input("Email").strip()
             new_password = st.text_input("New Password", type="password")
             if st.form_submit_button("Register"):
                 new_user = register_user(new_username, new_email, new_password)
@@ -351,7 +351,7 @@ else:
             
         st.divider()
         st.subheader("Filter & Search Tasks")
-        search_query = st.text_input("Search by Title/Description", key="search_input")
+        search_query = st.text_input("Search by Title/Description", key="search_input").strip()
         urgency_options = ["All"] + [e.value for e in UrgencyEnum]
         selected_urgency = st.selectbox("Filter by Urgency", options=urgency_options, key="urgency_filter")
         importance_options = ["All"] + [e.value for e in ImportanceEnum]
