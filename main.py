@@ -94,11 +94,22 @@ def create_task(
 def get_user_tasks(
     db: Session = Depends(get_db),
     current_user: UserDB = Depends(get_current_user),
-    completed: Optional[bool] = None
-):
+    completed: Optional[bool] = None,
+    urgency: Optional[str] = None,
+    importance: Optional[str] = None,
+    search_query: Optional[str] = None,):
+
     query = db.query(TaskDB).filter(TaskDB.user_id == current_user.id)
     if completed is not None:
         query = query.filter(TaskDB.completed == completed)
+    
+    if search_query:
+        query = query.filter(TaskDB.title.ilike(f"%{search_query}%") | TaskDB.description.ilike(f"%{search_query}%"))
+    if urgency:
+        query = query.filter(TaskDB.urgency == urgency)
+    if importance:
+        query = query.filter(TaskDB.importance == importance)
+    
     return query.all()
 
 @app.get("/tasks/{task_id}", response_model=Task)

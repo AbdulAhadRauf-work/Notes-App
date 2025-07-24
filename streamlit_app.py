@@ -39,7 +39,12 @@ def handle_api_error(err, context=""):
 
 # --- Cached Data Fetching ---
 @st.cache_data(show_spinner="Fetching tasks...")
-def get_tasks(completed: Optional[bool] = None) -> List[Dict]:
+def get_tasks(
+    completed: Optional[bool] = None,
+    search_query: Optional[str] = None,
+    urgency_filter: Optional[str] = None,
+    importance_filter: Optional[str] = None
+) -> List[Dict]:
     headers = get_auth_headers()
     if not headers:
         return []
@@ -48,6 +53,12 @@ def get_tasks(completed: Optional[bool] = None) -> List[Dict]:
     params = {}
     if completed is not None:
         params['completed'] = completed
+    if search_query:
+        params['search_query'] = search_query
+    if urgency_filter and urgency_filter != "All":
+        params['urgency'] = urgency_filter
+    if importance_filter and importance_filter != "All":
+        params['importance'] = importance_filter
 
     try:
         response = requests.get(url, headers=headers, params=params)
@@ -258,9 +269,10 @@ def create_task_dialog():
         if result:
             st.toast("Task created successfully!", icon="✅")
             task_id = result['id']
-            upload_file_api(task_id, files[0], "image")
-            upload_file_api(task_id, files[1], "document")
-            upload_file_api(task_id, files[2], "voice")
+            # Only upload if a file was provided
+            if files[0]: upload_file_api(task_id, files[0], "image")
+            if files[1]: upload_file_api(task_id, files[1], "document")
+            if files[2]: upload_file_api(task_id, files[2], "voice")
         st.session_state.show_create_dialog = False
         st.rerun()
     if st.button("Cancel"):
@@ -278,9 +290,10 @@ def edit_task_dialog():
         if result:
             st.toast("Task updated successfully!", icon="✅")
             task_id = result['id']
-            upload_file_api(task_id, files[0], "image")
-            upload_file_api(task_id, files[1], "document")
-            upload_file_api(task_id, files[2], "voice")
+            # Only upload if a file was provided
+            if files[0]: upload_file_api(task_id, files[0], "image")
+            if files[1]: upload_file_api(task_id, files[1], "document")
+            if files[2]: upload_file_api(task_id, files[2], "voice")
         del st.session_state.task_to_edit
         st.rerun()
     if st.button("Cancel"):
@@ -290,7 +303,8 @@ def edit_task_dialog():
 # --- Main App ---
 
 st.set_page_config(page_title="Task Manager", layout="wide")
-st.title("✅ Task Manager")
+st.title("Task Manager")
+st.write("by Abdul Ahad Rauf")
 st.write(f"Today is: {datetime.today().strftime('%A %B %d')}")
 
 # --- Authentication Flow ---
@@ -334,6 +348,19 @@ else:
         st.divider()
         if st.button("＋ Create New Task", type="primary", use_container_width=True):
             st.session_state.show_create_dialog = True
+            
+        st.divider()
+        st.subheader("Filter & Search Tasks")
+        search_query = st.text_input("Search by Title/Description", key="search_input")
+        urgency_options = ["All"] + [e.value for e in UrgencyEnum]
+        selected_urgency = st.selectbox("Filter by Urgency", options=urgency_options, key="urgency_filter")
+        importance_options = ["All"] + [e.value for e in ImportanceEnum]
+        selected_importance = st.selectbox("Filter by Importance", options=importance_options, key="importance_filter")
+        
+        if st.button("Apply Filters", use_container_width=True):
+            clear_task_cache() # Clear cache to refetch with new filters
+            st.rerun()
+
 
     # --- Dialog Triggers ---
     if st.session_state.get("show_create_dialog"):
@@ -345,7 +372,13 @@ else:
 
     with matrix_tab:
         st.header("Task Visualization")
-        active_tasks_for_matrix = get_tasks(completed=False)
+        # Pass filters to get_tasks for matrix tab
+        active_tasks_for_matrix = get_tasks(
+            completed=False, 
+            search_query=search_query, 
+            urgency_filter=selected_urgency, 
+            importance_filter=selected_importance
+        )
         fig = plot_task_matrix(active_tasks_for_matrix)
         if fig:
             st.pyplot(fig)
@@ -353,7 +386,13 @@ else:
 
     with active_tab:
         st.header("Your Active Tasks")
-        active_tasks = get_tasks(completed=False)
+        # Pass filters to get_tasks for active tasks tab
+        active_tasks = get_tasks(
+            completed=False, 
+            search_query=search_query, 
+            urgency_filter=selected_urgency, 
+            importance_filter=selected_importance
+        )
         if not active_tasks:
             st.info("You have no active tasks. Create one from the sidebar!")
         else:
@@ -380,7 +419,13 @@ else:
 
     with history_tab:
         st.header("Completed Tasks History")
-        completed_tasks = get_tasks(completed=True)
+        # Pass filters to get_tasks for history tab
+        completed_tasks = get_tasks(
+            completed=True, 
+            search_query=search_query, 
+            urgency_filter=selected_urgency, 
+            importance_filter=selected_importance
+        )
         if not completed_tasks:
             st.info("You have not completed any tasks yet.")
         else:
