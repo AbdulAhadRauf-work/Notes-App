@@ -13,3 +13,5 @@ pydantic[all]
 email-validator
 python-dotenv
 psycopg2-binary
+opencv-python
+streamlit_image_zoom

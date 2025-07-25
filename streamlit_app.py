@@ -10,6 +10,11 @@ import uvicorn
 from main import app as fastapi_app
 import threading
 from datetime import datetime, time
+import io
+from PIL import Image
+# Make sure to install this library: pip install streamlit-image-zoom
+from streamlit_image_zoom import image_zoom
+
 
 # --- Configuration ---
 API_BASE_URL = "http://127.0.0.1:8000"
@@ -318,26 +323,6 @@ def edit_task_dialog():
         del st.session_state.task_to_edit
         st.rerun()
 
-@st.dialog("Zoomed Task Matrix")
-def zoom_matrix_dialog():
-    tasks = st.session_state.get("tasks_for_zoom")
-    if tasks is None:
-        st.warning("No tasks to display.")
-        if st.button("Close"):
-            st.session_state.zoom_matrix = False
-            st.rerun()
-        return
-
-    st.header("Task Matrix - Zoomed View")
-    # Generate a larger plot
-    fig = plot_task_matrix(tasks, figsize=(18, 15))
-    if fig:
-        st.pyplot(fig)
-    if st.button("Close"):
-        st.session_state.zoom_matrix = False
-        del st.session_state.tasks_for_zoom
-        st.rerun()
-
 # --- Main App ---
 
 st.set_page_config(page_title="Task Manager", layout="wide")
@@ -405,14 +390,13 @@ else:
         create_task_dialog()
     if st.session_state.get("task_to_edit"):
         edit_task_dialog()
-    if st.session_state.get("zoom_matrix"):
-        zoom_matrix_dialog()
 
     matrix_tab, active_tab, history_tab = st.tabs(["📊 Task Matrix", "📋 Active Tasks", "📜 History"])
 
     with matrix_tab:
         st.header("Task Visualization")
-        # Pass filters to get_tasks for matrix tab
+        st.markdown("`(S)` - Short Term, `(L)` - Long Term.")
+        
         active_tasks_for_matrix = get_tasks(
             completed=False, 
             search_query=search_query, 
@@ -420,13 +404,12 @@ else:
             importance_filter=selected_importance
         )
         fig = plot_task_matrix(active_tasks_for_matrix)
+        
+
         if fig:
             st.pyplot(fig)
-            st.markdown("`(S)` - Short Term, `(L)` - Long Term")
-            if st.button("🔍 Zoom In", use_container_width=True):
-                st.session_state.tasks_for_zoom = active_tasks_for_matrix
-                st.session_state.zoom_matrix = True
-                st.rerun()
+
+       
 
     with active_tab:
         st.header("Your Active Tasks")
