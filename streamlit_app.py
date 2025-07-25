@@ -135,7 +135,7 @@ def upload_file_api(task_id, file, file_type):
         return None
 
 # --- UI Components ---
-def plot_task_matrix(tasks):
+def plot_task_matrix(tasks, figsize=(12, 10)):
     """Generates an Eisenhower Matrix plot for the given tasks."""
     if not tasks:
         st.info("No active tasks to visualize. Create some tasks first!")
@@ -151,7 +151,7 @@ def plot_task_matrix(tasks):
         "eliminate": df[(df['urgency'] == 'not_urgent') & (df['importance'] == 'not_important')],
     }
 
-    fig, axs = plt.subplots(2, 2, figsize=(12, 10))
+    fig, axs = plt.subplots(2, 2, figsize=figsize)
     fig.suptitle('Eisenhower Task Matrix', fontsize=20, weight='bold')
 
     # Define quadrant properties
@@ -252,29 +252,42 @@ def task_form_logic(task: Optional[Dict] = None) -> Tuple[Optional[Dict], Option
     return None, None, False
 
 def display_attachment(task_id, file_path, label):
-    if file_path and os.path.exists(file_path):
+    """
+    Displays a download link for a task attachment.
+    The link points to the FastAPI download endpoint.
+    """
+    if file_path:
         file_name = os.path.basename(file_path)
-        with open(file_path, "rb") as file:
-            st.download_button(
-                label=f"Download {label} ({file_name})",
-                data=file, file_name=file_name, key=f"dl_{task_id}_{label}"
-            )
+        download_url = f"{API_BASE_URL}/download/{task_id}/{file_name}"
+        
+        # We need to pass the auth headers for the download link to work.
+        # st.link_button doesn't support headers. A markdown link is a workaround.
+        # This is a known Streamlit limitation. For a real app, a better solution
+        # might be needed, but this works for demonstration.
+        st.markdown(f"[{label}: {file_name}]({download_url})")
+        st.caption(f"Click the link to download the {label.lower()}. You must be logged in.")
+
 
 # --- Dialog Definitions ---
 @st.dialog("Create New Task")
 def create_task_dialog():
     task_data, files, submitted = task_form_logic()
-    if submitted and task_data and files:
-        result = create_task_api(task_data)
-        if result:
-            st.toast("Task created successfully!", icon="✅")
-            task_id = result['id']
-            # Only upload if a file was provided
-            if files[0]: upload_file_api(task_id, files[0], "image")
-            if files[1]: upload_file_api(task_id, files[1], "document")
-            if files[2]: upload_file_api(task_id, files[2], "voice")
-        st.session_state.show_create_dialog = False
-        st.rerun()
+    if submitted:
+        if task_data and files:
+            result = create_task_api(task_data)
+            if result:
+                st.toast("Task created successfully!", icon="✅")
+                task_id = result['id']
+                # Upload files if they were provided
+                if files[0]: upload_file_api(task_id, files[0], "image")
+                if files[1]: upload_file_api(task_id, files[1], "document")
+                if files[2]: upload_file_api(task_id, files[2], "voice")
+                
+                # Close dialog and refresh on success
+                st.session_state.show_create_dialog = False
+                st.rerun()
+            # If result is None, the dialog stays open and the error toast is shown by the API function.
+    
     if st.button("Cancel"):
         st.session_state.show_create_dialog = False
         st.rerun()
@@ -285,19 +298,44 @@ def edit_task_dialog():
     if not task: return
     
     task_data, files, submitted = task_form_logic(task)
-    if submitted and task_data and files:
-        result = update_task_api(task['id'], task_data)
-        if result:
-            st.toast("Task updated successfully!", icon="✅")
-            task_id = result['id']
-            # Only upload if a file was provided
-            if files[0]: upload_file_api(task_id, files[0], "image")
-            if files[1]: upload_file_api(task_id, files[1], "document")
-            if files[2]: upload_file_api(task_id, files[2], "voice")
-        del st.session_state.task_to_edit
-        st.rerun()
+    if submitted:
+        if task_data and files:
+            result = update_task_api(task['id'], task_data)
+            if result:
+                st.toast("Task updated successfully!", icon="✅")
+                task_id = result['id']
+                # Upload files if they were provided
+                if files[0]: upload_file_api(task_id, files[0], "image")
+                if files[1]: upload_file_api(task_id, files[1], "document")
+                if files[2]: upload_file_api(task_id, files[2], "voice")
+
+                # Close dialog and refresh on success
+                del st.session_state.task_to_edit
+                st.rerun()
+            # If result is None, the dialog stays open and the error toast is shown by the API function.
+
     if st.button("Cancel"):
         del st.session_state.task_to_edit
+        st.rerun()
+
+@st.dialog("Zoomed Task Matrix")
+def zoom_matrix_dialog():
+    tasks = st.session_state.get("tasks_for_zoom")
+    if tasks is None:
+        st.warning("No tasks to display.")
+        if st.button("Close"):
+            st.session_state.zoom_matrix = False
+            st.rerun()
+        return
+
+    st.header("Task Matrix - Zoomed View")
+    # Generate a larger plot
+    fig = plot_task_matrix(tasks, figsize=(18, 15))
+    if fig:
+        st.pyplot(fig)
+    if st.button("Close"):
+        st.session_state.zoom_matrix = False
+        del st.session_state.tasks_for_zoom
         st.rerun()
 
 # --- Main App ---
@@ -367,6 +405,8 @@ else:
         create_task_dialog()
     if st.session_state.get("task_to_edit"):
         edit_task_dialog()
+    if st.session_state.get("zoom_matrix"):
+        zoom_matrix_dialog()
 
     matrix_tab, active_tab, history_tab = st.tabs(["📊 Task Matrix", "📋 Active Tasks", "📜 History"])
 
@@ -383,6 +423,10 @@ else:
         if fig:
             st.pyplot(fig)
             st.markdown("`(S)` - Short Term, `(L)` - Long Term")
+            if st.button("🔍 Zoom In", use_container_width=True):
+                st.session_state.tasks_for_zoom = active_tasks_for_matrix
+                st.session_state.zoom_matrix = True
+                st.rerun()
 
     with active_tab:
         st.header("Your Active Tasks")
@@ -397,7 +441,7 @@ else:
             st.info("You have no active tasks. Create one from the sidebar!")
         else:
             no_of_tasks = len(active_tasks)
-            st.write(f" Currents {no_of_tasks} {'Task' if no_of_tasks !=1 else 'Tasks'}")
+            st.write(f"You have {no_of_tasks} active {'task' if no_of_tasks == 1 else 'tasks'}.")
             for task in active_tasks:
                 with st.expander(f"**{task['title']}** | {task['urgency'].replace('_', ' ').title()} & {task['importance'].replace('_', ' ').title()}"):
                     st.write(task['description'])

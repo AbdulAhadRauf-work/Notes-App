@@ -84,11 +84,15 @@ def create_task(
     db: Session = Depends(get_db),
     current_user: UserDB = Depends(get_current_user)
 ):
-    query = db.query(TaskDB).filter(TaskDB.title.ilike(f"%{task.title}%")).first()
+    # Check for duplicate task title for the same user (case-insensitive)
+    query = db.query(TaskDB).filter(
+        TaskDB.user_id == current_user.id,
+        TaskDB.title.ilike(task.title)
+    ).first()
     if query:
-        raise HTTPException(status_code=404, detail="Title already present, cannot add to database.")
+        raise HTTPException(status_code=409, detail="A task with this title already exists.")
 
-    new_task = TaskDB(**task.dict(), user_id=current_user.id)
+    new_task = TaskDB(**task.model_dump(), user_id=current_user.id)
     db.add(new_task)
     db.commit()
     db.refresh(new_task)
@@ -138,7 +142,7 @@ def update_task(
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     
-    update_data = task_update.dict(exclude_unset=True)
+    update_data = task_update.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(task, key, value)
     
