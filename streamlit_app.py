@@ -11,9 +11,6 @@ from main import app as fastapi_app
 import threading
 from datetime import datetime, time
 import io
-from PIL import Image
-# Make sure to install this library: pip install streamlit-image-zoom
-from streamlit_image_zoom import image_zoom
 
 
 # --- Configuration ---
